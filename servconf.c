@@ -135,6 +135,7 @@ initialize_server_options(ServerOptions *options)
 	options->gss_authentication=-1;
 	options->gss_cleanup_creds = -1;
 	options->gss_strict_acceptor = -1;
+	options->gss_constrained_delegation = -1;
 	options->password_authentication = -1;
 	options->kbd_interactive_authentication = -1;
 	options->challenge_response_authentication = -1;
@@ -379,6 +380,8 @@ fill_default_server_options(ServerOptions *options)
 		options->gss_cleanup_creds = 1;
 	if (options->gss_strict_acceptor == -1)
 		options->gss_strict_acceptor = 1;
+	if (options->gss_constrained_delegation == -1)
+		options->gss_constrained_delegation = 0;
 	if (options->password_authentication == -1)
 		options->password_authentication = 1;
 	if (options->kbd_interactive_authentication == -1)
@@ -531,7 +534,7 @@ typedef enum {
 	sHostKeyAlgorithms,
 	sClientAliveInterval, sClientAliveCountMax, sAuthorizedKeysFile,
 	sGssAuthentication, sGssCleanupCreds, sGssStrictAcceptor,
-	sAcceptEnv, sSetEnv, sPermitTunnel,
+	sGssConstrainedDelegation, sAcceptEnv, sSetEnv, sPermitTunnel,
 	sMatch, sPermitOpen, sPermitListen, sForceCommand, sChrootDirectory,
 	sUsePrivilegeSeparation, sAllowAgentForwarding,
 	sHostCertificate, sInclude,
@@ -609,10 +612,12 @@ static struct {
 	{ "gssapiauthentication", sGssAuthentication, SSHCFG_ALL },
 	{ "gssapicleanupcredentials", sGssCleanupCreds, SSHCFG_GLOBAL },
 	{ "gssapistrictacceptorcheck", sGssStrictAcceptor, SSHCFG_GLOBAL },
+	{ "gssapiconstraineddelegation", sGssConstrainedDelegation, SSHCFG_GLOBAL },
 #else
 	{ "gssapiauthentication", sUnsupported, SSHCFG_ALL },
 	{ "gssapicleanupcredentials", sUnsupported, SSHCFG_GLOBAL },
 	{ "gssapistrictacceptorcheck", sUnsupported, SSHCFG_GLOBAL },
+	{ "gssapiconstraineddelegation", sUnsupported, SSHCFG_GLOBAL },
 #endif
 	{ "passwordauthentication", sPasswordAuthentication, SSHCFG_ALL },
 	{ "kbdinteractiveauthentication", sKbdInteractiveAuthentication, SSHCFG_ALL },
@@ -1562,6 +1567,10 @@ process_server_config_line_depth(ServerOptions *options, char *line,
 
 	case sGssStrictAcceptor:
 		intptr = &options->gss_strict_acceptor;
+		goto parse_flag;
+
+	case sGssConstrainedDelegation:
+		intptr = &options->gss_constrained_delegation;
 		goto parse_flag;
 
 	case sPasswordAuthentication:

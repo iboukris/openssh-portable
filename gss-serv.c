@@ -99,7 +99,16 @@ ssh_gssapi_acquire_cred(Gssctxt *ctx)
 {
 	OM_uint32 status;
 	char lname[NI_MAXHOST];
-	gss_OID_set oidset;
+	gss_OID_set oidset = GSS_C_NO_OID_SET;
+	gss_cred_usage_t usage = GSS_C_ACCEPT;
+
+	ctx->name = GSS_C_NO_NAME;
+	ctx->creds = GSS_C_NO_CREDENTIAL;
+
+	if (!options.gss_strict_acceptor &&
+	    !options.gss_constrained_delegation) {
+		return GSS_S_COMPLETE;
+	}
 
 	if (options.gss_strict_acceptor) {
 		gss_create_empty_oid_set(&status, &oidset);
@@ -114,19 +123,20 @@ ssh_gssapi_acquire_cred(Gssctxt *ctx)
 			gss_release_oid_set(&status, &oidset);
 			return (ctx->major);
 		}
-
-		if ((ctx->major = gss_acquire_cred(&ctx->minor,
-		    ctx->name, 0, oidset, GSS_C_ACCEPT, &ctx->creds,
-		    NULL, NULL)))
-			ssh_gssapi_error(ctx);
-
-		gss_release_oid_set(&status, &oidset);
-		return (ctx->major);
-	} else {
-		ctx->name = GSS_C_NO_NAME;
-		ctx->creds = GSS_C_NO_CREDENTIAL;
 	}
-	return GSS_S_COMPLETE;
+
+	if (options.gss_constrained_delegation) {
+		usage = GSS_C_BOTH;
+	}
+
+	ctx->major = gss_acquire_cred(&ctx->minor, ctx->name, 0, oidset,
+				      usage, &ctx->creds, NULL, NULL);
+	if (GSS_ERROR(ctx->major))
+		ssh_gssapi_error(ctx);
+
+	gss_release_oid_set(&status, &oidset);
+
+	return (ctx->major);
 }
 
 /* Privileged */
